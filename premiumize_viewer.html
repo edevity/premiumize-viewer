@@ -41,7 +41,6 @@ alert('2')
 	.then(response => response.json())
   	.then(function(data) {
 		alert('3')
-		alert('4 ' + data.status)
 		var subfolders = data.content;
 		for (var i = 0; i < subfolders.length; i++){
 alert('4')
@@ -61,6 +60,7 @@ alert('5')
 
 	}).catch(function(err) {
 		alert('error')
+		alert(err.message)
 	    console.error('Could not load folder, removing api-key')
 	    //removeCookie('apikey');
 	});
