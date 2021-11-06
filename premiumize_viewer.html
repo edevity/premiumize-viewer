@@ -15,7 +15,7 @@ function onloadFn() {
 		var maxAge = 1000*60*60*24*365
 		setCookie('apikey', apiKey, maxAge);
 	}
-
+alert(getCookie('apikey'))
 	const folderBaseUrl = 'https://www.premiumize.me/api/folder/list?apikey=' + apiKey;
 
 	var queryString = window.location.search;
@@ -23,7 +23,7 @@ function onloadFn() {
 
 	var folderId = getParameterByName('folder', queryString)
 	var parentId = getParameterByName('parent', queryString)
-
+alert('1')
 	if(folderId != null && folderId != '') {
 		folderUrl = folderUrl + '&id=' + folderId
 
@@ -33,13 +33,14 @@ function onloadFn() {
 	if(parentId != null && parentId != ''){
 		addLink('Parent...', '?folder=' + parentId)
 	}
-
+alert('2')
 	// url (required), options (optional)
 	fetch(folderUrl, {
 	    method: 'get'
 	})
 	.then(response => response.json())
   	.then(function(data) {
+		alert('3')
 		var subfolders = data.content;
 		for (var i = 0; i < subfolders.length; i++){
 
@@ -58,6 +59,7 @@ function onloadFn() {
 		}
 
 	}).catch(function(err) {
+		alert('error')
 	    console.error('Could not load folder, removing api-key')
 	    removeCookie('apikey');
 	});
