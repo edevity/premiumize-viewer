@@ -1,0 +1,106 @@
+
+<!DOCTYPE html>
+<html>
+<body onload="onloadFn()">
+
+<h1>Premiumize Simple Folder Viewer</h1>
+
+<script>
+function onloadFn() {
+
+	var apiKey = getCookie('apikey');
+	if(apiKey == null){
+		apiKey = prompt("Premiumize API-Key", "");
+		// 1 year
+		var maxAge = 1000*60*60*24*365
+		setCookie('apikey', apiKey, maxAge);
+	}
+
+	const folderBaseUrl = 'https://www.premiumize.me/api/folder/list?apikey=' + apiKey;
+
+	var queryString = window.location.search;
+	var folderUrl = folderBaseUrl;
+
+	var folderId = getParameterByName('folder', queryString)
+	var parentId = getParameterByName('parent', queryString)
+
+	if(folderId != null && folderId != '') {
+		folderUrl = folderUrl + '&id=' + folderId
+
+		addLink('Base...', '?folder=')
+	}
+
+	if(parentId != null && parentId != ''){
+		addLink('Parent...', '?folder=' + parentId)
+	}
+
+	// url (required), options (optional)
+	fetch(folderUrl, {
+	    method: 'get'
+	})
+	.then(response => response.json())
+  	.then(function(data) {
+		var subfolders = data.content;
+		for (var i = 0; i < subfolders.length; i++){
+
+			if(subfolders[i].name == null || subfolders[i].name == '' || subfolders[i].name == ' '){
+				continue
+			}
+
+			if(subfolders[i].type == 'folder'){
+
+				addLink('Folder: ' + subfolders[i].name, '?folder=' + subfolders[i].id + '&parent=' + (folderId != null ? folderId : ''))
+			}
+			else if(subfolders[i].type == 'file') {
+
+				addLink('File: ' + subfolders[i].name, 'https://www.premiumize.me/file?id=' + subfolders[i].id)
+			}
+		}
+
+	}).catch(function(err) {
+	    console.error('Could not load folder, removing api-key')
+	    removeCookie('apikey');
+	});
+}
+
+function getParameterByName(name, url) {
+    name = name.replace(/[\[\]]/g, '\\$&');
+    var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, ' '));
+}
+
+function addLink(html, href) {
+	var elemA = document.createElement('a');
+	elemA.style.cssText = 'display: block;';
+	elemA.innerHTML = html; 
+	elemA.href = href;
+	document.body.appendChild(elemA);
+}
+
+function setCookie(name, value, maxAge) {
+
+	document.cookie = name + '=' + value + ';max-age=' + maxAge + '; expires=' + new Date(Date.now() + maxAge).toUTCString() + '; path=/'
+}
+
+function removeCookie(name) {
+
+	document.cookie = name + '=' + value + ';max-age=0; expires=' + new Date(0).toUTCString() + '; path=/'
+}
+
+function getCookie(name) {
+
+	var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+	if (match){
+		return match[2]
+	}
+	return null;
+}
+
+
+</script>
+
+</body>
+</html>
