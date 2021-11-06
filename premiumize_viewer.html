@@ -43,11 +43,11 @@ alert('2')
 		alert('3')
 		var subfolders = data.content;
 		for (var i = 0; i < subfolders.length; i++){
-
+alert('4')
 			if(subfolders[i].name == null || subfolders[i].name == '' || subfolders[i].name == ' '){
 				continue
 			}
-
+alert('5')
 			if(subfolders[i].type == 'folder'){
 
 				addLink('Folder: ' + subfolders[i].name, '?folder=' + subfolders[i].id + '&parent=' + (folderId != null ? folderId : ''))
@@ -61,7 +61,7 @@ alert('2')
 	}).catch(function(err) {
 		alert('error')
 	    console.error('Could not load folder, removing api-key')
-	    removeCookie('apikey');
+	    //removeCookie('apikey');
 	});
 }
 
@@ -89,7 +89,7 @@ function setCookie(name, value, maxAge) {
 
 function removeCookie(name) {
 
-	document.cookie = name + '=' + value + ';max-age=0; expires=' + new Date(0).toUTCString() + '; path=/'
+	document.cookie = name + '=;max-age=0; expires=' + new Date(0).toUTCString() + '; path=/'
 }
 
 function getCookie(name) {
