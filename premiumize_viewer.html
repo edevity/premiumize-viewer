@@ -8,6 +8,7 @@
 <script>
 function onloadFn() {
 
+	// Getting and storing api key for further calls
 	var apiKey = getCookie('apikey');
 	if(apiKey == null){
 		apiKey = prompt("Premiumize API-Key", "");
@@ -16,24 +17,40 @@ function onloadFn() {
 		setCookie('apikey', apiKey, maxAge);
 	}
 	const folderBaseUrl = 'https://www.premiumize.me/api/folder/list?apikey=' + apiKey;
+	const fileBaseUrl = 'https://www.premiumize.me/api/item/details?apikey=' + apiKey;
 
 	var queryString = window.location.search;
 	var folderUrl = folderBaseUrl;
 
-	var folderId = getParameterByName('folder', queryString)
+	// parent param (optional) to add link to parent folder
 	var parentId = getParameterByName('parent', queryString)
+	// file param (optional) to show the video for that file
+	var fileId = getParameterByName('file', queryString)
+	// folder param (optional) to show the content of that folder
+	var folderId = getParameterByName('folder', queryString)
 
-	if(folderId != null && folderId != '') {
-		folderUrl = folderUrl + '&id=' + folderId
+	addLink('Base...', '?folder=')
 
-		addLink('Base...', '?folder=')
-	}
-
-	if(parentId != null && parentId != ''){
+	if(notEmpty(parentId)){
 		addLink('Parent...', '?folder=' + parentId)
 	}
 
-	// url (required), options (optional)
+	if(notEmpty(fileId)) {
+		showFile(fileBaseUrl, fileId)
+	}
+	else {
+		showFolderContent(folderUrl, folderId)
+	}
+}
+
+function showFolderContent(parentFolderUrl, folderId) {
+
+	var folderUrl = parentFolderUrl 
+
+	if(notEmpty(folderId)) {
+		folderUrl = folderUrl + '&id=' + folderId
+	}
+
 	fetch(folderUrl, {
 	    method: 'get'
 	})
@@ -53,7 +70,7 @@ function onloadFn() {
 			}
 			else if(subfolders[i].type == 'file') {
 
-				addLink('File: ' + subfolders[i].name, 'https://www.premiumize.me/file?id=' + subfolders[i].id)
+				addLink('File: ' + subfolders[i].name, '?file=' + subfolders[i].id + '&parent=' + (folderId != null ? folderId : ''))
 			}
 		}
 
@@ -61,6 +78,33 @@ function onloadFn() {
 	    alert('Error: ' + err.message)
 	    console.error('Could not load folder, removing api-key')
 	    removeCookie('apikey');
+	});
+}
+
+function showFile(fileBaseUrl, fileId) {
+
+	if(!notEmpty(fileId)) {
+		alert('Error: Missing file-id')
+		return
+	}
+
+	var fileUrl = fileBaseUrl + '&id=' + fileId
+
+	fetch(fileUrl,  {
+	    method: 'get'
+	})
+	.then(response => response.json())
+  	.then(function(data) {
+
+  		if(!data.mime_type.startsWith('video')) {
+  			addText('File is not a video but: ' + data.mime_type);
+  			return;
+  		}
+  		// Creating video element
+  		addVideo(data.link)
+
+	}).catch(function(err) {
+	    alert('Error: ' + err.message)
 	});
 }
 
@@ -81,19 +125,60 @@ function addLink(html, href) {
 	document.body.appendChild(elemA);
 }
 
+function addText(html) {
+	var elemDiv = document.createElement('div');
+	elemDiv.style.cssText = 'display: block;';
+	elemDiv.innerHTML = html; 
+	document.body.appendChild(elemDiv);
+}
+
+function addVideo(streamUrl) {
+	var elemVideo = document.createElement('video');
+	elemVideo.src = streamUrl;
+	elemVideo.width='700';
+	elemVideo.height='400';
+	elemVideo.controls=true;
+	document.body.appendChild(elemVideo);
+
+	// <video id='video' width='700' height='400'  src='...' autoplay controls></video>
+}
+
+function notEmpty(text) {
+	return text != null && text != '';
+}
+
 function setCookie(name, value, maxAge) {
 
-	document.cookie = name + '=' + value + ';max-age=' + maxAge + '; expires=' + new Date(Date.now() + maxAge).toUTCString() + '; path=/'
+	// Workaround to store api-key in window.name because cookie storage doesn't work
+	if(location.protocol.startsWith('file')) {
+		window.name = name + '=' + value + ';';
+		return;
+	}
+
+	document.cookie = name + '=' + value + ';max-age=' + maxAge + '; expires=' + new Date(Date.now() + maxAge).toUTCString() + '; path=/';
 }
 
 function removeCookie(name) {
 
-	document.cookie = name + '=;max-age=0; expires=' + new Date(0).toUTCString() + '; path=/'
+	// Workaround to store api-key in window.name because cookie storage doesn't work
+	if(location.protocol.startsWith('file')) {
+		window.name = '';
+		return;
+	}
+
+	document.cookie = name + '=;max-age=0; expires=' + new Date(0).toUTCString() + '; path=/';
 }
 
 function getCookie(name) {
 
-	var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+	var cookieData = document.cookie;
+
+	// Workaround to store api-key in window.name because cookie storage doesn't work
+	if(location.protocol.startsWith('file')) {
+		cookieData = window.name;
+	}
+
+	var match = cookieData.match(new RegExp('(^| )' + name + '=([^;]+)'))
 	if (match){
 		return match[2]
 	}
