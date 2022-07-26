@@ -100,8 +100,15 @@ function showFile(fileBaseUrl, fileId) {
   			addText('File is not a video but: ' + data.mime_type);
   			return;
   		}
+  		
+  		// For some formats there is a special mp4 stream-link available. It that's the case using it.
+  		var link = data.link;
+  		if(data.stream_link != null) {
+  			link = data.stream_link;
+  		}
+
   		// Creating video element
-  		addVideo(data.link)
+  		addVideo(link, data.mime_type);
 
 	}).catch(function(err) {
 	    alert('Error: ' + err.message)
@@ -132,15 +139,34 @@ function addText(html) {
 	document.body.appendChild(elemDiv);
 }
 
-function addVideo(streamUrl) {
+function addVideo(streamUrl, mimeType) {
 	var elemVideo = document.createElement('video');
-	elemVideo.src = streamUrl;
+	elemVideo.id ='video';
 	elemVideo.width='700';
 	elemVideo.height='400';
 	elemVideo.controls=true;
+	//elemVideo.autoplay =true;
+	//elemVideo.muted=true;
+	//elemVideo.innerHTML = "Video not supported";
+
+	// To add a video-source with a special type an own source element would be necessary
+	//addVideoSource(elemVideo, streamUrl, mimeType);
+	elemVideo.src = streamUrl;
+
 	document.body.appendChild(elemVideo);
 
-	// <video id='video' width='700' height='400'  src='...' autoplay controls></video>
+	// <video id='video' width='700' height='400' controls>...</video>
+}
+
+function addVideoSource(elemVideo, streamUrl, mimeType) {
+
+	var elemSource = document.createElement('source');
+	elemSource.src = streamUrl;
+	elemSource.type = mimeType;
+
+	elemVideo.appendChild(elemSource);
+
+	//<source src="shuttle.mp4" type="video/mp4">
 }
 
 function notEmpty(text) {
