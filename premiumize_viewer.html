@@ -101,11 +101,12 @@ function showFile(fileBaseUrl, fileId) {
   			return;
   		}
   		
-  		// For some formats there is a special mp4 stream-link available. It that's the case using it.
+  		// For some formats there is a special mp4 stream-link available. Unfortunately then the video quality
+		// and sound will get real bad. Therefore sticking to real video.
   		var link = data.link;
-  		if(data.stream_link != null) {
-  			link = data.stream_link;
-  		}
+  		//if(data.stream_link != null) {
+  		//	link = data.stream_link;
+  		//}
 
   		// Creating video element
   		addVideo(link, data.mime_type);
