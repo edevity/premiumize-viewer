@@ -96,7 +96,7 @@ function showFile(fileBaseUrl, fileId) {
 	.then(response => response.json())
   	.then(function(data) {
 
-  		if(!data.mime_type.startsWith('video')) {
+  		if(!data.mime_type.startsWith('video') || data.mime_type.indexOf('octet-stream') == -1) {
   			addText('File is not a video but: ' + data.mime_type);
   			return;
   		}
