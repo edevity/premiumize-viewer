@@ -6,6 +6,7 @@
 <h1>Premiumize Simple Folder Viewer</h1>
 
 <script>
+
 function onloadFn() {
 
 	// Getting and storing api key for further calls
@@ -16,11 +17,11 @@ function onloadFn() {
 		var maxAge = 1000*60*60*24*365
 		setCookie('apikey', apiKey, maxAge);
 	}
-	const folderBaseUrl = 'https://www.premiumize.me/api/folder/list?apikey=' + apiKey;
-	const fileBaseUrl = 'https://www.premiumize.me/api/item/details?apikey=' + apiKey;
+
+	window.folderBaseUrl = 'https://www.premiumize.me/api/folder/list?apikey=' + apiKey;
+	window.fileBaseUrl = 'https://www.premiumize.me/api/item/details?apikey=' + apiKey;
 
 	var queryString = window.location.search;
-	var folderUrl = folderBaseUrl;
 
 	// parent param (optional) to add link to parent folder
 	var parentId = getParameterByName('parent', queryString)
@@ -29,91 +30,117 @@ function onloadFn() {
 	// folder param (optional) to show the content of that folder
 	var folderId = getParameterByName('folder', queryString)
 
+	// Link to base folder
 	addLink('Base...', '?folder=')
-
-	if(notEmpty(parentId)){
-		addLink('Parent...', '?folder=' + parentId)
-	}
+	// Will be the same as the base link for top level folders
+	addLink('Parent...', '?folder=' + (parentId != null ? parentId : ''))
 
 	if(notEmpty(fileId)) {
-		showFile(fileBaseUrl, fileId)
+		showFile(fileId, parentId)
 	}
 	else {
-		showFolderContent(folderUrl, folderId)
+		showFolderContent(folderId)
 	}
 }
 
-function showFolderContent(parentFolderUrl, folderId) {
-
-	var folderUrl = parentFolderUrl 
-
+function createFolderUrl(folderId) {
+	var folderUrl = window.folderBaseUrl;
 	if(notEmpty(folderId)) {
 		folderUrl = folderUrl + '&id=' + folderId
 	}
+	return folderUrl;
+}
 
-	fetch(folderUrl, {
+function createFileUrl(fileId) {
+
+	var fileUrl = window.fileBaseUrl;
+	if(notEmpty(fileId)) {
+		fileUrl = fileUrl + '&id=' + fileId
+	}
+	return fileUrl;
+}
+
+function showFolderContent(folderId) {
+
+	fetch(createFolderUrl(folderId), {
 	    method: 'get'
 	})
 	.then(response => response.json())
   	.then(function(data) {
 
-		var subfolders = data.content;
-		for (var i = 0; i < subfolders.length; i++){
+		var childs = data.content;
+		for (var i = 0; i < childs.length; i++){
 
-			if(subfolders[i].name == null || subfolders[i].name == '' || subfolders[i].name == ' '){
+			if(childs[i].name == null || childs[i].name == '' || childs[i].name == ' '){
 				continue
 			}
 
-			if(subfolders[i].type == 'folder'){
+			if(childs[i].type == 'folder'){
 
-				addLink('Folder: ' + subfolders[i].name, '?folder=' + subfolders[i].id + '&parent=' + (folderId != null ? folderId : ''))
+				addLink('Folder: ' + childs[i].name, '?folder=' + childs[i].id + '&parent=' + (folderId != null ? folderId : ''))
 			}
-			else if(subfolders[i].type == 'file') {
+			else if(childs[i].type == 'file') {
 
-				addLink('File: ' + subfolders[i].name, '?file=' + subfolders[i].id + '&parent=' + (folderId != null ? folderId : ''))
+				addLink('File: ' + childs[i].name, '?file=' + childs[i].id + '&parent=' + (folderId != null ? folderId : ''))
 			}
 		}
 
-	}).catch(function(err) {
-	    alert('Error: ' + err.message)
-	    console.error('Could not load folder, removing api-key')
-	    removeCookie('apikey');
-	});
+	}).catch(handleError);
 }
 
-function showFile(fileBaseUrl, fileId) {
+function showFile(fileId, parentId) {
 
-	if(!notEmpty(fileId)) {
-		alert('Error: Missing file-id')
-		return
-	}
-
-	var fileUrl = fileBaseUrl + '&id=' + fileId
-
-	fetch(fileUrl,  {
+	fetch(createFolderUrl(parentId), {
 	    method: 'get'
 	})
 	.then(response => response.json())
   	.then(function(data) {
 
-  		if(!data.mime_type.startsWith('video') && data.mime_type.indexOf('octet-stream') == -1) {
-  			addText('File is not a video but: ' + data.mime_type);
-  			return;
-  		}
-  		
-  		// For some formats there is a special mp4 stream-link available. Unfortunately then the video quality
-		// and sound will get real bad. Therefore sticking to real video.
-  		var link = data.link;
-  		//if(data.stream_link != null) {
-  		//	link = data.stream_link;
-  		//}
+		var otherFilesInSameFolder = data.content;
 
-  		// Creating video element
-  		addVideo(link, data.mime_type);
+		fetch(createFileUrl(fileId),  {
+		    method: 'get'
+		})
+		.then(response => response.json())
+	  	.then(function(data) {
 
-	}).catch(function(err) {
-	    alert('Error: ' + err.message)
-	});
+	  		if(!data.mime_type.startsWith('video') && data.mime_type.indexOf('octet-stream') == -1) {
+	  			addText('File is not a video but: ' + data.mime_type);
+	  			return;
+	  		}
+
+	  		// For some formats there is a special mp4 stream-link available. Unfortunately then the video quality
+			// and sound will get real bad. Therefore sticking to real video.
+	  		var link = data.link;
+	  		//if(data.stream_link != null) {
+	  		//	link = data.stream_link;
+	  		//}
+
+	  		// Search in parent-folder if there is a subtitle file with the same name as the video, if that's the case use it
+	  		var subtitleUrl = null;
+	  		var videoName = data.name;
+	  		var videoNameWithoutExtension = videoName.substr(0, videoName.lastIndexOf('.'));
+	  		var videoSubtitlesToSearch = videoNameWithoutExtension + '.vtt';
+			for (var i = 0; i < otherFilesInSameFolder.length; i++){
+				if(otherFilesInSameFolder[i].name == videoSubtitlesToSearch) {
+					subtitleUrl = otherFilesInSameFolder[i].link;
+					console.info("Found subtitles " + videoSubtitlesToSearch)
+					break
+				}
+			}
+
+	  		// Creating video element
+	  		addVideo(link, data.mime_type, subtitleUrl);
+
+		}).catch(handleError);
+
+	}).catch(handleError);
+}
+
+function handleError(err) {
+    alert('Error: ' + err.message)
+    console.error('Error, removing api key: ' + err.message)
+    //removeCookie('apikey');
 }
 
 function getParameterByName(name, url) {
@@ -140,12 +167,14 @@ function addText(html) {
 	document.body.appendChild(elemDiv);
 }
 
-function addVideo(streamUrl, mimeType) {
+function addVideo(streamUrl, mimeType, subtitleUrl) {
 	var elemVideo = document.createElement('video');
 	elemVideo.id ='video';
 	elemVideo.width='700';
 	elemVideo.height='400';
 	elemVideo.controls=true;
+	// Allow text-tracks (subtitles) from different servers
+	elemVideo.crossOrigin="anonymous";
 	//elemVideo.autoplay =true;
 	//elemVideo.muted=true;
 	//elemVideo.innerHTML = "Video not supported";
@@ -153,6 +182,10 @@ function addVideo(streamUrl, mimeType) {
 	// To add a video-source with a special type an own source element would be necessary
 	//addVideoSource(elemVideo, streamUrl, mimeType);
 	elemVideo.src = streamUrl;
+
+	if(notEmpty(subtitleUrl)) {
+		addSubtitles(elemVideo, subtitleUrl);
+	}
 
 	document.body.appendChild(elemVideo);
 
@@ -168,6 +201,20 @@ function addVideoSource(elemVideo, streamUrl, mimeType) {
 	elemVideo.appendChild(elemSource);
 
 	//<source src="shuttle.mp4" type="video/mp4">
+}
+
+function addSubtitles(elemVideo, subtitleUrl) {
+
+	var elemTrack = document.createElement('track');
+	elemTrack.label = 'English';
+	elemTrack.kind = 'subtitles';
+	elemTrack.srclang = 'en';
+	elemTrack.src = subtitleUrl;
+	elemTrack.default = true;
+
+	elemVideo.appendChild(elemTrack);
+
+	//<track label="English" kind="subtitles" srclang="en" src="3798-233163.vtt" default>
 }
 
 function notEmpty(text) {
